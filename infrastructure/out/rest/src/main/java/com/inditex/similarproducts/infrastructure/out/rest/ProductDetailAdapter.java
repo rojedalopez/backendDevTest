@@ -1,6 +1,6 @@
 package com.inditex.similarproducts.infrastructure.out.rest;
 
-import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.inditex.similarproducts.model.ProductDetail;
 import com.inditex.similarproducts.model.port.ProductDetailPort;
@@ -22,7 +22,7 @@ class ProductDetailAdapter implements ProductDetailPort {
     private final WebClient webClient;
     private final TimeLimiter timeLimiter;
     private final CircuitBreaker circuitBreaker;
-    private final Cache<String, ProductDetail> cache;
+    private final AsyncCache<String, ProductDetail> cache;
 
     ProductDetailAdapter(WebClient mocksWebClient, TimeLimiterRegistry timeLimiterRegistry,
             CircuitBreakerRegistry circuitBreakerRegistry, MocksProperties properties) {
@@ -32,16 +32,12 @@ class ProductDetailAdapter implements ProductDetailPort {
         this.cache = Caffeine.newBuilder()
                 .expireAfterWrite(properties.productDetailCache().ttl())
                 .maximumSize(properties.productDetailCache().maxSize())
-                .build();
+                .buildAsync();
     }
 
     @Override
     public Mono<ProductDetail> findProductDetail(String productId) {
-        ProductDetail cached = cache.getIfPresent(productId);
-        if (cached != null) {
-            return Mono.just(cached);
-        }
-        return fetch(productId).doOnNext(detail -> cache.put(productId, detail));
+        return Mono.fromFuture(() -> cache.get(productId, (id, executor) -> fetch(id).toFuture()));
     }
 
     private Mono<ProductDetail> fetch(String productId) {
