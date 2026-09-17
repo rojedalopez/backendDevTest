@@ -46,7 +46,10 @@ There is currently no root aggregator `pom.xml`. One will be added:
 `<packaging>pom</packaging>`, `<modules>` listing all five modules, and
 `<dependencyManagement>` importing the Spring Boot BOM and the Resilience4j
 BOM, centralizing the Java 24 compiler properties currently duplicated in
-every child pom.
+every child pom. The root pom also wires up build-enforced quality gates
+(§8, rule 8): `jacoco-maven-plugin` and `maven-checkstyle-plugin`, both
+bound to the `verify` phase, so `mvn verify` fails locally and in CI if
+either gate isn't met — not just a manually-checked convention.
 
 **Stack decisions:**
 - **Reactive** (Spring WebFlux + `WebClient`), chosen over virtual
@@ -183,6 +186,14 @@ no separate response DTO/mapping layer, since one would add nothing here.
   (`docker-compose up -d simulado influxdb grafana`, start the app on
   :5000, `docker-compose run --rm k6 run scripts/test.js`) and check the
   Grafana dashboard before calling the work done.
+- **Coverage gate**: `mvn verify` runs JaCoCo and fails the build if line
+  coverage drops below **95%**, aggregated per module (excludes the
+  `application` module's `@SpringBootApplication` bootstrap class, which
+  has no meaningful branches to cover). Coverage is a byproduct of the TDD
+  cycle above, not a target chased after the fact — if a module can't
+  reasonably reach 95% (e.g. a thin adapter method that's mostly
+  framework wiring), that's a signal to simplify the code, not to lower
+  the threshold.
 
 ## 8. Coding Rules
 
@@ -207,6 +218,12 @@ change touching it:
 7. A single failed similar-product detail lookup must never fail the whole
    `/similar` request — only a failure on the base product's ids lookup
    (404) or an unexpected error there does.
+8. Every module must maintain **at least 95% line coverage** and pass
+   Checkstyle (Google Java style ruleset) with zero violations, both
+   enforced by `mvn verify` (`jacoco-maven-plugin` +
+   `maven-checkstyle-plugin`, configured in the root pom). A change that
+   drops coverage below the threshold or introduces a lint violation does
+   not merge.
 
 ## 9. Implementation Workflow
 
@@ -230,6 +247,8 @@ resulting implementation plan, not a software component. Next steps:
   20-call window / 50% failure rate) are defaults to validate against the
   actual k6 run once implemented, not final numbers.
 - `DETAIL_FETCH_CONCURRENCY` (proposed 16) is likewise a starting default.
+- Checkstyle ruleset is proposed as Google Java style; swap if the team has
+  an existing house style to match instead.
 - No app-level metrics/observability adapter is planned — the k6 →
   InfluxDB → Grafana pipeline already provided is the load-test reporting
   path; nothing in this design pushes custom metrics.
