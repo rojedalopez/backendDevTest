@@ -55,6 +55,7 @@ infrastructure/out/rest/src/main/java/com/inditex/similarproducts/infrastructure
 infrastructure/out/rest/src/main/java/com/inditex/similarproducts/infrastructure/out/rest/WebClientConfig.java     [create]
 infrastructure/out/rest/src/main/java/com/inditex/similarproducts/infrastructure/out/rest/SimilarProductIdsAdapter.java [create]
 infrastructure/out/rest/src/main/java/com/inditex/similarproducts/infrastructure/out/rest/ProductDetailAdapter.java     [create]
+infrastructure/out/rest/src/test/java/com/inditex/similarproducts/infrastructure/out/rest/WebClientConfigTest.java          [create]
 infrastructure/out/rest/src/test/java/com/inditex/similarproducts/infrastructure/out/rest/SimilarProductIdsAdapterTest.java [create]
 infrastructure/out/rest/src/test/java/com/inditex/similarproducts/infrastructure/out/rest/ProductDetailAdapterTest.java     [create]
 
@@ -897,6 +898,7 @@ EOF
 - Create: `infrastructure/out/rest/src/main/java/com/inditex/similarproducts/infrastructure/out/rest/MocksProperties.java`
 - Create: `infrastructure/out/rest/src/main/java/com/inditex/similarproducts/infrastructure/out/rest/WebClientConfig.java`
 - Create: `infrastructure/out/rest/src/main/java/com/inditex/similarproducts/infrastructure/out/rest/SimilarProductIdsAdapter.java`
+- Test: `infrastructure/out/rest/src/test/java/com/inditex/similarproducts/infrastructure/out/rest/WebClientConfigTest.java`
 - Test: `infrastructure/out/rest/src/test/java/com/inditex/similarproducts/infrastructure/out/rest/SimilarProductIdsAdapterTest.java`
 
 **Interfaces:**
@@ -906,7 +908,33 @@ EOF
   - `WebClientConfig#mocksWebClient(MocksProperties): WebClient` — `@Bean`
   - `SimilarProductIdsAdapter(WebClient, TimeLimiterRegistry, CircuitBreakerRegistry)` implementing `SimilarProductIdsPort`, package-private `@Component` (used again by Task 7's context)
 
-- [ ] **Step 1: Write the failing test**
+`WebClientConfig` needs its own direct unit test: Task 4/5's adapter tests construct `WebClient.create(...)` themselves rather than going through this bean, so without `WebClientConfigTest` the class would show 0% coverage in this module's own JaCoCo bundle (the `application` module's context-load test exercises it too, but that coverage data lands in a different module's bundle and doesn't count here).
+
+- [ ] **Step 1: Write the failing tests**
+
+`infrastructure/out/rest/src/test/java/com/inditex/similarproducts/infrastructure/out/rest/WebClientConfigTest.java`:
+
+```java
+package com.inditex.similarproducts.infrastructure.out.rest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.Duration;
+import org.junit.jupiter.api.Test;
+
+class WebClientConfigTest {
+
+    @Test
+    void buildsWebClientWithConfiguredBaseUrl() {
+        MocksProperties properties = new MocksProperties(
+                "http://localhost:3001",
+                500,
+                new MocksProperties.ProductDetailCache(Duration.ofSeconds(30), 10_000));
+
+        assertThat(new WebClientConfig().mocksWebClient(properties)).isNotNull();
+    }
+}
+```
 
 `infrastructure/out/rest/src/test/java/com/inditex/similarproducts/infrastructure/out/rest/SimilarProductIdsAdapterTest.java`:
 
@@ -995,7 +1023,7 @@ class SimilarProductIdsAdapterTest {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `mvn -q -pl infrastructure/out/rest -am test`
-Expected: FAIL to compile — `SimilarProductIdsAdapter` doesn't exist yet.
+Expected: FAIL to compile — `WebClientConfig`/`SimilarProductIdsAdapter` don't exist yet.
 
 - [ ] **Step 3: Write the implementation**
 
@@ -1101,7 +1129,7 @@ class SimilarProductIdsAdapter implements SimilarProductIdsPort {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `mvn -q -pl infrastructure/out/rest -am test`
-Expected: `BUILD SUCCESS`, 3 tests run, 0 failures.
+Expected: `BUILD SUCCESS`, 4 tests run (1 from `WebClientConfigTest` + 3 from `SimilarProductIdsAdapterTest`), 0 failures.
 
 - [ ] **Step 5: Commit**
 
@@ -1302,7 +1330,7 @@ Caffeine's `AsyncCache` automatically evicts an entry whose backing `Completable
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `mvn -q -pl infrastructure/out/rest -am test`
-Expected: `BUILD SUCCESS`, 7 tests run total (3 from Task 4 + 4 here), 0 failures.
+Expected: `BUILD SUCCESS`, 8 tests run total (4 from Task 4 + 4 here), 0 failures.
 
 - [ ] **Step 5: Commit**
 
