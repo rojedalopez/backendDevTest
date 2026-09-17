@@ -57,9 +57,15 @@ either gate isn't met — not just a manually-checked convention.
   for mature non-blocking composition and timeout/backpressure operators
   under the 200-VU concurrent load.
 - **Resilience4j** for per-call timeouts and circuit breaking.
-- **No caching.** Rejected deliberately — the point of this exercise is to
-  demonstrate the resilience/concurrency story under real load, not to mask
-  slow/failing downstream calls behind a cache.
+- **In-memory cache for product details** (Caffeine), scoped to
+  `ProductDetailAdapter` only — see §5. This supersedes the earlier
+  "no caching" call: the same handful of popular products recur across
+  many different base products' similar-id lists, so caching product
+  *details* meaningfully cuts downstream load without hiding the
+  resilience story, since similar-ids lookups and failure handling are
+  untouched. Only successful lookups are cached; failures are left to the
+  circuit breaker (§5) rather than a separate negative cache, to avoid two
+  mechanisms doing overlapping jobs.
 
 ## 3. Domain Model & Ports (`domain/model`)
 
@@ -149,6 +155,21 @@ Rules encoded here:
 - All of the above thresholds are externalized to `application.yml`, never
   hardcoded in adapter classes.
 
+**Product detail cache.** `ProductDetailAdapter` wraps its resilience-guarded
+WebClient call with a Caffeine `AsyncCache<String, ProductDetail>`, keyed by
+productId:
+
+- Only successful lookups populate the cache — a failed/timed-out/circuit-open
+  call is never cached (no negative caching; the circuit breaker already
+  handles "known-bad product" fail-fast behavior).
+- Proposed defaults: TTL ~30s (`expireAfterWrite`), max size ~10,000
+  entries — both externalized to `application.yml`, per rule 4.
+- The cache sits entirely inside the adapter; `ProductDetailPort`'s
+  contract (`Mono<ProductDetail>`) is unchanged, so `domain/usecase` has no
+  awareness a cache exists.
+- `SimilarProductIdsAdapter` is **not** cached — similar-ids lookups stay
+  always-fresh.
+
 ## 6. Inbound Adapter (`infrastructure/in/rest`)
 
 `SimilarProductsController`:
@@ -177,8 +198,11 @@ no separate response DTO/mapping layer, since one would add nothing here.
   similar-ids list (200/complete/empty).
 - **`infrastructure/out/rest`**: adapter tests (WireMock or
   `MockWebServer`) proving the timeout and circuit breaker actually trip
-  against slow/erroring responses, and that a 404 maps to
-  `ProductNotFoundException`.
+  against slow/erroring responses, that a 404 maps to
+  `ProductNotFoundException`, and that a second `findProductDetail` call
+  for the same id within the TTL does **not** hit the mock again (cache
+  hit), while a failed call is never cached (next call still hits the
+  mock).
 - **`infrastructure/in/rest`**: `WebTestClient` slice tests for the
   status-code mapping table in §6.
 - **Acceptance**: the provided `docker-compose` + k6 flow is the real
@@ -224,6 +248,9 @@ change touching it:
    `maven-checkstyle-plugin`, configured in the root pom). A change that
    drops coverage below the threshold or introduces a lint violation does
    not merge.
+9. Caching, where used, is an adapter-local concern (currently only
+   `ProductDetailAdapter`) — it must never leak into a port's contract or
+   into `domain/usecase`, and it must only cache successful responses.
 
 ## 9. Implementation Workflow
 
@@ -249,6 +276,8 @@ resulting implementation plan, not a software component. Next steps:
 - `DETAIL_FETCH_CONCURRENCY` (proposed 16) is likewise a starting default.
 - Checkstyle ruleset is proposed as Google Java style; swap if the team has
   an existing house style to match instead.
+- Product-detail cache TTL (proposed 30s) and max size (proposed 10,000)
+  are starting defaults to validate against the k6 run once implemented.
 - No app-level metrics/observability adapter is planned — the k6 →
   InfluxDB → Grafana pipeline already provided is the load-test reporting
   path; nothing in this design pushes custom metrics.
