@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.inditex.similarproducts.infrastructure.out.rest.SimilarProductIdsAdapterTest
--------------------------------------------------------------------------------
-Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.076 s -- in com.inditex.similarproducts.infrastructure.out.rest.SimilarProductIdsAdapterTest
