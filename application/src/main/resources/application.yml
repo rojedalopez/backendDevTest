@@ -7,6 +7,10 @@ management:
       exposure:
         include: health,info,metrics
 
+cors:
+  allowed-origins:
+    - http://localhost:5173
+
 mocks:
   base-url: http://localhost:3001
   max-connections: 500
