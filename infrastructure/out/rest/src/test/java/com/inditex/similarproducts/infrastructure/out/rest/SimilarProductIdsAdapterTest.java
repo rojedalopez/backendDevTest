@@ -2,10 +2,12 @@ package com.inditex.similarproducts.infrastructure.out.rest;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.inditex.similarproducts.model.ProductNotFoundException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.timelimiter.TimeLimiterConfig;
@@ -32,7 +34,7 @@ class SimilarProductIdsAdapterTest {
         TimeLimiterRegistry timeLimiterRegistry = TimeLimiterRegistry.of(
                 TimeLimiterConfig.custom().timeoutDuration(Duration.ofMillis(500)).build());
         CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.of(
-                CircuitBreakerConfig.custom().slidingWindowSize(20).build());
+                CircuitBreakerConfig.custom().slidingWindowSize(20).minimumNumberOfCalls(10).build());
 
         adapter = new SimilarProductIdsAdapter(webClient, timeLimiterRegistry, circuitBreakerRegistry);
     }
@@ -75,5 +77,21 @@ class SimilarProductIdsAdapterTest {
         StepVerifier.create(adapter.findSimilarProductIds("1"))
                 .expectError()
                 .verify();
+    }
+
+    @Test
+    void circuitBreakerOpensAfterRepeatedFailures() {
+        wireMockServer.stubFor(get(urlEqualTo("/product/6/similarids"))
+                .willReturn(aResponse().withStatus(500)));
+
+        for (int i = 0; i < 10; i++) {
+            StepVerifier.create(adapter.findSimilarProductIds("6")).expectError().verify();
+        }
+
+        StepVerifier.create(adapter.findSimilarProductIds("6"))
+                .expectError(CallNotPermittedException.class)
+                .verify();
+
+        wireMockServer.verify(10, getRequestedFor(urlEqualTo("/product/6/similarids")));
     }
 }

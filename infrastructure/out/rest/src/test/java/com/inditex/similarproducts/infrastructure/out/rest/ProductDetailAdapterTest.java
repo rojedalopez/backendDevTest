@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.inditex.similarproducts.model.ProductDetail;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.timelimiter.TimeLimiterConfig;
@@ -33,7 +34,7 @@ class ProductDetailAdapterTest {
         TimeLimiterRegistry timeLimiterRegistry = TimeLimiterRegistry.of(
                 TimeLimiterConfig.custom().timeoutDuration(Duration.ofMillis(500)).build());
         CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.of(
-                CircuitBreakerConfig.custom().slidingWindowSize(20).build());
+                CircuitBreakerConfig.custom().slidingWindowSize(20).minimumNumberOfCalls(10).build());
         MocksProperties properties = new MocksProperties(
                 "http://localhost:" + wireMockServer.port(),
                 500,
@@ -91,5 +92,21 @@ class ProductDetailAdapterTest {
         StepVerifier.create(adapter.findProductDetail("6")).expectError().verify();
 
         wireMockServer.verify(2, getRequestedFor(urlEqualTo("/product/6")));
+    }
+
+    @Test
+    void circuitBreakerOpensAfterRepeatedFailures() {
+        wireMockServer.stubFor(get(urlEqualTo("/product/7"))
+                .willReturn(aResponse().withStatus(500)));
+
+        for (int i = 0; i < 10; i++) {
+            StepVerifier.create(adapter.findProductDetail("7")).expectError().verify();
+        }
+
+        StepVerifier.create(adapter.findProductDetail("7"))
+                .expectError(CallNotPermittedException.class)
+                .verify();
+
+        wireMockServer.verify(10, getRequestedFor(urlEqualTo("/product/7")));
     }
 }
