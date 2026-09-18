@@ -131,41 +131,5 @@ class SimilarProductsControllerTest {
         assertThat(problemDetail.getStatus()).isEqualTo(400);
         assertThat(problemDetail.getDetail()).isEqualTo("productId: size must be between 0 and 64");
     }
-
-    @Test
-    void returnsBadRequestWhenPageIsNegative() {
-        webTestClient.get().uri("/product/1/similar?page=-1")
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectHeader().contentType("application/problem+json")
-                .expectBody()
-                .jsonPath("$.detail").isEqualTo("page: must be greater than or equal to 0");
-    }
-
-    @Test
-    void returnsBadRequestWhenSizeIsZero() {
-        webTestClient.get().uri("/product/1/similar?size=0")
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectHeader().contentType("application/problem+json");
-    }
-
-    @Test
-    void returnsBadRequestWhenSizeExceedsMaximum() {
-        webTestClient.get().uri("/product/1/similar?size=51")
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectHeader().contentType("application/problem+json");
-    }
-
-    @Test
-    void returnsBadRequestWhenPageExceedsMaximum() {
-        webTestClient.get().uri("/product/1/similar?page=100001")
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectHeader().contentType("application/problem+json")
-                .expectBody()
-                .jsonPath("$.detail").isEqualTo("page: must be less than or equal to 100000");
-    }
 }
 

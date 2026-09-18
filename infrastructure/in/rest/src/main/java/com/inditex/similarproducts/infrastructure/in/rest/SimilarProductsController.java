@@ -29,34 +29,8 @@ class SimilarProductsController {
             @PathVariable @Size(max = 64) String productId,
             @RequestParam(defaultValue = "0") @Min(0) @Max(100000) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size) {
-        // Manual validation for bare controller test compatibility
-        doValidateParameters(productId, page, size);
-
         return useCase.getSimilarProducts(productId, page, size)
                 .map(SimilarProductsController::toResponse);
-    }
-
-    private static void doValidateParameters(String productId, int page, int size) {
-        if (productId.length() > 64) {
-            throw new ValidationErrorException(
-                    "productId: size must be between 0 and 64");
-        }
-        if (page < 0) {
-            throw new ValidationErrorException(
-                    "page: must be greater than or equal to 0");
-        }
-        if (page > 100000) {
-            throw new ValidationErrorException(
-                    "page: must be less than or equal to 100000");
-        }
-        if (size < 1) {
-            throw new ValidationErrorException(
-                    "size: must be greater than or equal to 1");
-        }
-        if (size > 50) {
-            throw new ValidationErrorException(
-                    "size: must be less than or equal to 50");
-        }
     }
 
     private static ResponseEntity<SimilarProductsPage> toResponse(SimilarProductsResult result) {

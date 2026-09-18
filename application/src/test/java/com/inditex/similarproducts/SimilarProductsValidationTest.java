@@ -34,6 +34,38 @@ class SimilarProductsValidationTest {
         webTestClient.get().uri("/product/1/similar?page=-1")
                 .exchange()
                 .expectStatus().isBadRequest()
-                .expectHeader().contentType("application/problem+json");
+                .expectHeader().contentType("application/problem+json")
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("page: must be greater than or equal to 0");
+    }
+
+    @Test
+    void rejectsPageExceedingMaximum() {
+        webTestClient.get().uri("/product/1/similar?page=100001")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentType("application/problem+json")
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("page: must be less than or equal to 100000");
+    }
+
+    @Test
+    void rejectsSizeBelowMinimum() {
+        webTestClient.get().uri("/product/1/similar?size=0")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentType("application/problem+json")
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("size: must be greater than or equal to 1");
+    }
+
+    @Test
+    void rejectsSizeExceedingMaximum() {
+        webTestClient.get().uri("/product/1/similar?size=51")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentType("application/problem+json")
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("size: must be less than or equal to 50");
     }
 }
