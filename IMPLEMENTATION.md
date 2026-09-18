@@ -59,17 +59,25 @@ only — both infrastructure modules depend on `domain/usecase` and
 
 - `GET /actuator/health`, `/actuator/info`, `/actuator/metrics` are exposed (Spring Boot Actuator) for container/orchestrator health checks and basic operational visibility. `show-details` stays at the secure default (`never`) since there's no authentication layer.
 - Both outbound adapters log Resilience4j circuit-breaker state transitions and TimeLimiter timeouts via SLF4J, so breaker trips and timeouts are now visible in application logs rather than silent.
-- Error responses use RFC 7807 (`application/problem+json`, Spring's built-in `ProblemDetail`) instead of empty bodies: 404 for an unknown base product, 400 for an invalid request (currently: `productId` over 64 characters), 500 for anything unexpected (with a fixed, non-leaking detail message — the real exception is logged server-side only).
+- Error responses use RFC 7807 (`application/problem+json`, Spring's built-in `ProblemDetail`) instead of empty bodies: 404 for an unknown base product, 400 for an invalid request (`productId` over 64 characters, or `page`/`size` outside their permitted ranges), 500 for anything unexpected (with a fixed, non-leaking detail message — the real exception is logged server-side only).
 - This adds Micrometer (via Actuator) to the stack, which the original design spec explicitly deferred ("no app-level metrics/observability adapter is planned") — that position changed for this follow-up work; see `docs/superpowers/specs/2026-09-17-similar-products-service-design.md` §10 for the original reasoning this supersedes.
-- `GET /product/{productId}/similar` accepts `page` (default `0`) and `size`
-  (default `10`, max `50`) query parameters and always returns a paginated
-  envelope — `{items, page, size, totalItems, totalPages}` — rather than a
-  bare array. This is a further deliberate deviation from
+- `GET /product/{productId}/similar` accepts `page` (default `0`, min `0`,
+  max `100000`) and `size` (default `10`, min `1`, max `50`) query
+  parameters and always returns a paginated envelope —
+  `{items, page, size, totalItems, totalPages}` — rather than a bare
+  array. This is a further deliberate deviation from
   `similarProducts.yaml`'s literal contract (same treatment as the 206
   decision); see
   `docs/superpowers/specs/2026-09-18-pagination-design.md` for the
   rationale, including why the performance benefit comes from slicing the
-  similar-ids list *before* resolving product details, not after.
+  similar-ids list *before* resolving product details, not after. The
+  `page` upper bound is not part of the original spec — it guards
+  `page * size` against `int` overflow, which would otherwise surface as
+  a 500 for extreme page values rather than a clean 400. `totalItems`
+  counts similar *ids*, not successfully resolved products: if some
+  details fail to resolve, the sum of `items` across all pages can be
+  less than `totalItems`, visible to a paging client via the 206 status
+  on the affected page rather than a mismatched count.
 
 ## Note on the `docs/` folder
 

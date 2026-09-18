@@ -54,6 +54,20 @@ class SimilarProductsControllerTest {
     }
 
     @Test
+    void returnsExplicitPageAndSizeQueryParams() {
+        ProductDetail detail = new ProductDetail("6", "Boots", BigDecimal.valueOf(49.99), true);
+        when(useCase.getSimilarProducts("1", 2, 5))
+                .thenReturn(Mono.just(new SimilarProductsResult(List.of(detail), false, 2, 5, 11, 3)));
+
+        webTestClient.get().uri("/product/1/similar?page=2&size=5")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.page").isEqualTo(2)
+                .jsonPath("$.size").isEqualTo(5);
+    }
+
+    @Test
     void returnsPartialContentWhenResultIsPartial() {
         when(useCase.getSimilarProducts("4", 0, 10))
                 .thenReturn(Mono.just(new SimilarProductsResult(List.of(), true, 0, 10, 2, 1)));
@@ -132,4 +146,3 @@ class SimilarProductsControllerTest {
         assertThat(problemDetail.getDetail()).isEqualTo("productId: size must be between 0 and 64");
     }
 }
-

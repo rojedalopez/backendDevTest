@@ -128,6 +128,23 @@ class GetSimilarProductsUseCaseTest {
     }
 
     @Test
+    void returnsTruncatedLastPageSuccessfully() {
+        when(similarProductIdsPort.findSimilarProductIds("1"))
+                .thenReturn(Mono.just(List.of("2", "3", "4", "5", "6")));
+        when(productDetailPort.findProductDetail("6")).thenReturn(Mono.just(detail("6")));
+
+        StepVerifier.create(useCase.getSimilarProducts("1", 2, 2))
+                .assertNext(result -> {
+                    assertThat(result.products()).containsExactly(detail("6"));
+                    assertThat(result.partial()).isFalse();
+                    assertThat(result.page()).isEqualTo(2);
+                    assertThat(result.totalItems()).isEqualTo(5);
+                    assertThat(result.totalPages()).isEqualTo(3);
+                })
+                .verifyComplete();
+    }
+
+    @Test
     void returnsEmptyResultForPageBeyondLastPage() {
         when(similarProductIdsPort.findSimilarProductIds("1")).thenReturn(Mono.just(List.of("2", "3")));
 
