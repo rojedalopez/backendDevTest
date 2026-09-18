@@ -119,6 +119,11 @@ class ProductDetailAdapterTest {
 
     @Test
     void propagatesErrorWhenCallTimesOut() {
+        ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(ProductDetailAdapter.class);
+        logAppender.start();
+        logger.addAppender(logAppender);
+
         wireMockServer.stubFor(get(urlEqualTo("/product/9"))
                 .willReturn(aResponse()
                         .withFixedDelay(2000)
@@ -128,6 +133,13 @@ class ProductDetailAdapterTest {
         StepVerifier.create(adapter.findProductDetail("9"))
                 .expectError(TimeoutException.class)
                 .verify();
+
+        boolean timeoutLogged = logAppender.list.stream()
+                .anyMatch(event -> event.getLevel() == Level.WARN
+                        && event.getFormattedMessage().contains("timed out"));
+        assertThat(timeoutLogged).isTrue();
+
+        logger.detachAppender(logAppender);
     }
 
     @Test

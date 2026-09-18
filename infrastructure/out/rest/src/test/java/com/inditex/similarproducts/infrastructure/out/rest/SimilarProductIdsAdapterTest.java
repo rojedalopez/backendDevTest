@@ -74,6 +74,11 @@ class SimilarProductIdsAdapterTest {
 
     @Test
     void propagatesErrorWhenCallTimesOut() {
+        ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(SimilarProductIdsAdapter.class);
+        logAppender.start();
+        logger.addAppender(logAppender);
+
         wireMockServer.stubFor(get(urlEqualTo("/product/1/similarids"))
                 .willReturn(aResponse()
                         .withFixedDelay(2000)
@@ -83,6 +88,13 @@ class SimilarProductIdsAdapterTest {
         StepVerifier.create(adapter.findSimilarProductIds("1"))
                 .expectError(TimeoutException.class)
                 .verify();
+
+        boolean timeoutLogged = logAppender.list.stream()
+                .anyMatch(event -> event.getLevel() == Level.WARN
+                        && event.getFormattedMessage().contains("timed out"));
+        assertThat(timeoutLogged).isTrue();
+
+        logger.detachAppender(logAppender);
     }
 
     @Test
