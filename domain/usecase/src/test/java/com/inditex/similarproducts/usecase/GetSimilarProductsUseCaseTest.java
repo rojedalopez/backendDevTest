@@ -9,6 +9,7 @@ import com.inditex.similarproducts.model.ProductNotFoundException;
 import com.inditex.similarproducts.model.port.ProductDetailPort;
 import com.inditex.similarproducts.model.port.SimilarProductIdsPort;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -24,13 +25,14 @@ class GetSimilarProductsUseCaseTest {
     @Test
     void returnsCompleteResultWhenAllDetailsSucceed() {
         when(similarProductIdsPort.findSimilarProductIds("1")).thenReturn(Mono.just(List.of("2", "3")));
-        when(productDetailPort.findProductDetail("2")).thenReturn(Mono.just(detail("2")));
+        when(productDetailPort.findProductDetail("2"))
+                .thenReturn(Mono.just(detail("2")).delayElement(Duration.ofMillis(50)));
         when(productDetailPort.findProductDetail("3")).thenReturn(Mono.just(detail("3")));
 
         StepVerifier.create(useCase.getSimilarProducts("1"))
                 .assertNext(result -> {
                     assertThat(result.partial()).isFalse();
-                    assertThat(result.products()).containsExactlyInAnyOrder(detail("2"), detail("3"));
+                    assertThat(result.products()).containsExactly(detail("2"), detail("3"));
                 })
                 .verifyComplete();
     }

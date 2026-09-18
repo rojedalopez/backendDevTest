@@ -5,7 +5,6 @@ import com.inditex.similarproducts.model.port.ProductDetailPort;
 import com.inditex.similarproducts.model.port.SimilarProductIdsPort;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -25,7 +24,7 @@ public class GetSimilarProductsUseCase {
     public Mono<SimilarProductsResult> getSimilarProducts(String productId) {
         return similarProductIdsPort.findSimilarProductIds(productId)
                 .flatMap(ids -> Flux.fromIterable(ids)
-                        .flatMap(id -> fetchDetailOrEmpty(id), DETAIL_FETCH_CONCURRENCY)
+                        .flatMapSequential(this::fetchDetailOrEmpty, DETAIL_FETCH_CONCURRENCY)
                         .collectList()
                         .map(results -> toResult(ids.size(), results)));
     }
@@ -39,7 +38,7 @@ public class GetSimilarProductsUseCase {
     private static SimilarProductsResult toResult(int requestedCount, List<Optional<ProductDetail>> results) {
         List<ProductDetail> products = results.stream()
                 .flatMap(Optional::stream)
-                .collect(Collectors.toList());
+                .toList();
         boolean partial = products.size() < requestedCount;
         return new SimilarProductsResult(products, partial);
     }
