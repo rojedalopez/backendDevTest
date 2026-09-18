@@ -25,6 +25,7 @@ class SimilarProductsValidationTest {
                 .expectStatus().isBadRequest()
                 .expectHeader().contentType("application/problem+json")
                 .expectBody()
-                .jsonPath("$.status").isEqualTo(400);
+                .jsonPath("$.status").isEqualTo(400)
+                .jsonPath("$.detail").isEqualTo("productId: size must be between 0 and 64");
     }
 }

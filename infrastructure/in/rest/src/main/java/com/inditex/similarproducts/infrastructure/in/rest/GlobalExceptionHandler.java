@@ -1,7 +1,10 @@
 package com.inditex.similarproducts.infrastructure.in.rest;
 
 import com.inditex.similarproducts.model.ProductNotFoundException;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -21,7 +24,18 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     ProblemDetail handleValidationFailure(ConstraintViolationException exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+        String detail = exception.getConstraintViolations().stream()
+                .map(GlobalExceptionHandler::describeViolation)
+                .collect(Collectors.joining(", "));
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+    }
+
+    private static String describeViolation(ConstraintViolation<?> violation) {
+        String propertyName = null;
+        for (Path.Node node : violation.getPropertyPath()) {
+            propertyName = node.getName();
+        }
+        return propertyName + ": " + violation.getMessage();
     }
 
     @ExceptionHandler(Exception.class)

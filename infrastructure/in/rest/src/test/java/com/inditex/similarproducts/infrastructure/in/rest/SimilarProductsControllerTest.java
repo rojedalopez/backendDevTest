@@ -12,7 +12,9 @@ import com.inditex.similarproducts.model.ProductDetail;
 import com.inditex.similarproducts.model.ProductNotFoundException;
 import com.inditex.similarproducts.usecase.GetSimilarProductsUseCase;
 import com.inditex.similarproducts.usecase.SimilarProductsResult;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
@@ -107,12 +109,18 @@ class SimilarProductsControllerTest {
     @Test
     void mapsConstraintViolationToBadRequestProblemDetail() {
         GlobalExceptionHandler handler = new GlobalExceptionHandler();
-        ConstraintViolationException exception =
-                new ConstraintViolationException("productId size must be <= 64", Set.of());
+        Path.Node node = mock(Path.Node.class);
+        when(node.getName()).thenReturn("productId");
+        Path path = mock(Path.class);
+        when(path.iterator()).thenReturn(List.of(node).iterator());
+        ConstraintViolation<?> violation = mock(ConstraintViolation.class);
+        when(violation.getPropertyPath()).thenReturn(path);
+        when(violation.getMessage()).thenReturn("size must be between 0 and 64");
+        ConstraintViolationException exception = new ConstraintViolationException(Set.of(violation));
 
         ProblemDetail problemDetail = handler.handleValidationFailure(exception);
 
         assertThat(problemDetail.getStatus()).isEqualTo(400);
-        assertThat(problemDetail.getDetail()).isEqualTo("productId size must be <= 64");
+        assertThat(problemDetail.getDetail()).isEqualTo("productId: size must be between 0 and 64");
     }
 }
