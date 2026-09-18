@@ -55,6 +55,13 @@ only — both infrastructure modules depend on `domain/usecase` and
   `flatMapSequential` with bounded concurrency rather than plain `flatMap`,
   which would emit in completion order instead.
 
+## Operational endpoints and error contract
+
+- `GET /actuator/health`, `/actuator/info`, `/actuator/metrics` are exposed (Spring Boot Actuator) for container/orchestrator health checks and basic operational visibility. `show-details` stays at the secure default (`never`) since there's no authentication layer.
+- Both outbound adapters log Resilience4j circuit-breaker state transitions and TimeLimiter timeouts via SLF4J, so breaker trips and timeouts are now visible in application logs rather than silent.
+- Error responses use RFC 7807 (`application/problem+json`, Spring's built-in `ProblemDetail`) instead of empty bodies: 404 for an unknown base product, 400 for an invalid request (currently: `productId` over 64 characters), 500 for anything unexpected (with a fixed, non-leaking detail message — the real exception is logged server-side only).
+- This adds Micrometer (via Actuator) to the stack, which the original design spec explicitly deferred ("no app-level metrics/observability adapter is planned") — that position changed for this follow-up work; see `docs/superpowers/specs/2026-09-17-similar-products-service-design.md` §10 for the original reasoning this supersedes.
+
 ## Note on the `docs/` folder
 
 `docs/superpowers/specs/` holds the design rationale behind the choices
