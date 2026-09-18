@@ -31,3 +31,5 @@ resilience4j:
         minimum-number-of-calls: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 5s
+        ignore-exceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException$NotFound
