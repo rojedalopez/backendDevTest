@@ -37,7 +37,8 @@ class ProductDetailAdapter implements ProductDetailPort {
 
     @Override
     public Mono<ProductDetail> findProductDetail(String productId) {
-        return Mono.fromFuture(() -> cache.get(productId, (id, executor) -> fetch(id).toFuture()));
+        return Mono.fromFuture(() -> cache.get(productId, (id, executor) -> fetch(id).toFuture()))
+                .doOnError(error -> cache.synchronous().invalidate(productId));
     }
 
     private Mono<ProductDetail> fetch(String productId) {
