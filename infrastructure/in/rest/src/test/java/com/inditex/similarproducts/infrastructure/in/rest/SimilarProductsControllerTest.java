@@ -55,7 +55,11 @@ class SimilarProductsControllerTest {
 
         webTestClient.get().uri("/product/404/similar")
                 .exchange()
-                .expectStatus().isNotFound();
+                .expectStatus().isNotFound()
+                .expectHeader().contentType("application/problem+json")
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(404)
+                .jsonPath("$.detail").isEqualTo("Product not found: 404");
     }
 
     @Test
@@ -64,6 +68,10 @@ class SimilarProductsControllerTest {
 
         webTestClient.get().uri("/product/1/similar")
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().is5xxServerError()
+                .expectHeader().contentType("application/problem+json")
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(500)
+                .jsonPath("$.detail").isEqualTo("An unexpected error occurred.");
     }
 }

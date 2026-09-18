@@ -2,7 +2,7 @@ package com.inditex.similarproducts.infrastructure.in.rest;
 
 import com.inditex.similarproducts.model.ProductNotFoundException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -10,12 +10,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 class GlobalExceptionHandler {
 
     @ExceptionHandler(ProductNotFoundException.class)
-    ResponseEntity<Void> handleNotFound(ProductNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    ProblemDetail handleNotFound(ProductNotFoundException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<Void> handleUnexpected(Exception exception) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    ProblemDetail handleUnexpected(Exception exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred.");
     }
 }
