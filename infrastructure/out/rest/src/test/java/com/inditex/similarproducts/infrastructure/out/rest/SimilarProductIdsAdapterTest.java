@@ -14,6 +14,7 @@ import io.github.resilience4j.timelimiter.TimeLimiterConfig;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,7 +76,7 @@ class SimilarProductIdsAdapterTest {
                         .withBody("[\"2\"]")));
 
         StepVerifier.create(adapter.findSimilarProductIds("1"))
-                .expectError()
+                .expectError(TimeoutException.class)
                 .verify();
     }
 

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.test.StepVerifier;
 
 class ProductDetailAdapterTest {
@@ -66,7 +67,7 @@ class ProductDetailAdapterTest {
                 .willReturn(aResponse().withStatus(404)));
 
         StepVerifier.create(adapter.findProductDetail("5"))
-                .expectError()
+                .expectError(WebClientResponseException.NotFound.class)
                 .verify();
     }
 
