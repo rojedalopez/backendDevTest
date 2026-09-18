@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ServerWebInputException;
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -27,6 +28,26 @@ class GlobalExceptionHandler {
         String detail = exception.getConstraintViolations().stream()
                 .map(GlobalExceptionHandler::describeViolation)
                 .collect(Collectors.joining(", "));
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+    }
+
+    @ExceptionHandler(ValidationErrorException.class)
+    ProblemDetail handleValidationError(ValidationErrorException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
+
+    @ExceptionHandler(ServerWebInputException.class)
+    ProblemDetail handleWebInputFailure(ServerWebInputException exception) {
+        // WebFlux validation error - extract detail from the cause if available
+        String detail = exception.getReason();
+        if (detail == null || detail.isEmpty()) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof ConstraintViolationException cve) {
+                detail = cve.getConstraintViolations().stream()
+                        .map(GlobalExceptionHandler::describeViolation)
+                        .collect(Collectors.joining(", "));
+            }
+        }
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     }
 
