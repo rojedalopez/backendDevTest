@@ -1,5 +1,6 @@
 package com.inditex.similarproducts.infrastructure.in.rest;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -7,10 +8,13 @@ import com.inditex.similarproducts.model.ProductDetail;
 import com.inditex.similarproducts.model.ProductNotFoundException;
 import com.inditex.similarproducts.usecase.GetSimilarProductsUseCase;
 import com.inditex.similarproducts.usecase.SimilarProductsResult;
+import jakarta.validation.ConstraintViolationException;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.ProblemDetail;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -73,5 +77,17 @@ class SimilarProductsControllerTest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(500)
                 .jsonPath("$.detail").isEqualTo("An unexpected error occurred.");
+    }
+
+    @Test
+    void mapsConstraintViolationToBadRequestProblemDetail() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        ConstraintViolationException exception =
+                new ConstraintViolationException("productId size must be <= 64", Set.of());
+
+        ProblemDetail problemDetail = handler.handleValidationFailure(exception);
+
+        assertThat(problemDetail.getStatus()).isEqualTo(400);
+        assertThat(problemDetail.getDetail()).isEqualTo("productId size must be <= 64");
     }
 }
