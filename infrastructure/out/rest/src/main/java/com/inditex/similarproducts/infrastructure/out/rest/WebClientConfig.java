@@ -12,8 +12,8 @@ import reactor.netty.resources.ConnectionProvider;
 public class WebClientConfig {
 
     @Bean
-    WebClient mocksWebClient(MocksProperties properties) {
-        ConnectionProvider connectionProvider = ConnectionProvider.builder("mocks-connection-pool")
+    WebClient productCatalogWebClient(ProductCatalogProperties properties) {
+        ConnectionProvider connectionProvider = ConnectionProvider.builder("product-catalog-connection-pool")
                 .maxConnections(properties.maxConnections())
                 .build();
         HttpClient httpClient = HttpClient.create(connectionProvider)

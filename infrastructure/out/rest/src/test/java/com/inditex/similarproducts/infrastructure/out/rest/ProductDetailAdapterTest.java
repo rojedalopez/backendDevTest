@@ -42,10 +42,10 @@ class ProductDetailAdapterTest {
                 TimeLimiterConfig.custom().timeoutDuration(Duration.ofMillis(500)).build());
         CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.of(
                 CircuitBreakerConfig.custom().slidingWindowSize(20).minimumNumberOfCalls(10).build());
-        MocksProperties properties = new MocksProperties(
+        ProductCatalogProperties properties = new ProductCatalogProperties(
                 "http://localhost:" + wireMockServer.port(),
                 500,
-                new MocksProperties.ProductDetailCache(Duration.ofSeconds(30), 10_000));
+                new ProductCatalogProperties.ProductDetailCache(Duration.ofSeconds(30), 10_000));
 
         adapter = new ProductDetailAdapter(webClient, timeLimiterRegistry, circuitBreakerRegistry, properties);
     }

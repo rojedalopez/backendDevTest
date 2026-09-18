@@ -31,14 +31,14 @@ class WebClientConfigTest {
 
     @Test
     void buildsWebClientTargetingTheConfiguredBaseUrl() {
-        MocksProperties properties = new MocksProperties(
+        ProductCatalogProperties properties = new ProductCatalogProperties(
                 "http://localhost:" + wireMockServer.port(),
                 500,
-                new MocksProperties.ProductDetailCache(Duration.ofSeconds(30), 10_000));
+                new ProductCatalogProperties.ProductDetailCache(Duration.ofSeconds(30), 10_000));
 
         wireMockServer.stubFor(get(urlEqualTo("/ping")).willReturn(aResponse().withStatus(200)));
 
-        WebClient webClient = new WebClientConfig().mocksWebClient(properties);
+        WebClient webClient = new WebClientConfig().productCatalogWebClient(properties);
 
         StepVerifier.create(webClient.get().uri("/ping").retrieve().toBodilessEntity())
                 .assertNext(response -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK))

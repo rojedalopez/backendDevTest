@@ -11,7 +11,7 @@ cors:
   allowed-origins:
     - http://localhost:5173
 
-mocks:
+product-catalog:
   base-url: http://localhost:3001
   max-connections: 500
   product-detail-cache:

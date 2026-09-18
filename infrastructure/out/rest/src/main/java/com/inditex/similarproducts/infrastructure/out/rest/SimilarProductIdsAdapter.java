@@ -29,9 +29,9 @@ class SimilarProductIdsAdapter implements SimilarProductIdsPort {
     private final TimeLimiter timeLimiter;
     private final CircuitBreaker circuitBreaker;
 
-    SimilarProductIdsAdapter(WebClient mocksWebClient, TimeLimiterRegistry timeLimiterRegistry,
+    SimilarProductIdsAdapter(WebClient productCatalogWebClient, TimeLimiterRegistry timeLimiterRegistry,
             CircuitBreakerRegistry circuitBreakerRegistry) {
-        this.webClient = mocksWebClient;
+        this.webClient = productCatalogWebClient;
         this.timeLimiter = timeLimiterRegistry.timeLimiter(INSTANCE_NAME);
         this.circuitBreaker = circuitBreakerRegistry.circuitBreaker(INSTANCE_NAME);
 

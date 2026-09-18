@@ -27,9 +27,9 @@ class ProductDetailAdapter implements ProductDetailPort {
     private final CircuitBreaker circuitBreaker;
     private final AsyncCache<String, ProductDetail> cache;
 
-    ProductDetailAdapter(WebClient mocksWebClient, TimeLimiterRegistry timeLimiterRegistry,
-            CircuitBreakerRegistry circuitBreakerRegistry, MocksProperties properties) {
-        this.webClient = mocksWebClient;
+    ProductDetailAdapter(WebClient productCatalogWebClient, TimeLimiterRegistry timeLimiterRegistry,
+            CircuitBreakerRegistry circuitBreakerRegistry, ProductCatalogProperties properties) {
+        this.webClient = productCatalogWebClient;
         this.timeLimiter = timeLimiterRegistry.timeLimiter(INSTANCE_NAME);
         this.circuitBreaker = circuitBreakerRegistry.circuitBreaker(INSTANCE_NAME);
         this.cache = Caffeine.newBuilder()
