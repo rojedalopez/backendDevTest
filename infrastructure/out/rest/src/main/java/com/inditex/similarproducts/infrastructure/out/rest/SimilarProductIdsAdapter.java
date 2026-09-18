@@ -9,6 +9,8 @@ import io.github.resilience4j.reactor.timelimiter.TimeLimiterOperator;
 import io.github.resilience4j.timelimiter.TimeLimiter;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,6 +23,7 @@ class SimilarProductIdsAdapter implements SimilarProductIdsPort {
     private static final String INSTANCE_NAME = "similarIdsService";
     private static final ParameterizedTypeReference<List<String>> ID_LIST_TYPE =
             new ParameterizedTypeReference<>() { };
+    private static final Logger log = LoggerFactory.getLogger(SimilarProductIdsAdapter.class);
 
     private final WebClient webClient;
     private final TimeLimiter timeLimiter;
@@ -31,6 +34,13 @@ class SimilarProductIdsAdapter implements SimilarProductIdsPort {
         this.webClient = mocksWebClient;
         this.timeLimiter = timeLimiterRegistry.timeLimiter(INSTANCE_NAME);
         this.circuitBreaker = circuitBreakerRegistry.circuitBreaker(INSTANCE_NAME);
+
+        this.circuitBreaker.getEventPublisher()
+                .onStateTransition(event -> log.info("Circuit breaker '{}' transitioned from {} to {}",
+                        INSTANCE_NAME, event.getStateTransition().getFromState(),
+                        event.getStateTransition().getToState()));
+        this.timeLimiter.getEventPublisher()
+                .onTimeout(event -> log.warn("TimeLimiter '{}' timed out", INSTANCE_NAME));
     }
 
     @Override

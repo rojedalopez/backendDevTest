@@ -4,7 +4,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.inditex.similarproducts.model.ProductNotFoundException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
@@ -94,5 +99,27 @@ class SimilarProductIdsAdapterTest {
                 .verify();
 
         wireMockServer.verify(10, getRequestedFor(urlEqualTo("/product/6/similarids")));
+    }
+
+    @Test
+    void logsCircuitBreakerStateTransitionWhenItOpens() {
+        ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(SimilarProductIdsAdapter.class);
+        logAppender.start();
+        logger.addAppender(logAppender);
+
+        wireMockServer.stubFor(get(urlEqualTo("/product/8/similarids"))
+                .willReturn(aResponse().withStatus(500)));
+
+        for (int i = 0; i < 10; i++) {
+            StepVerifier.create(adapter.findSimilarProductIds("8")).expectError().verify();
+        }
+
+        boolean transitionLogged = logAppender.list.stream()
+                .anyMatch(event -> event.getLevel() == Level.INFO
+                        && event.getFormattedMessage().contains("CLOSED to OPEN"));
+        assertThat(transitionLogged).isTrue();
+
+        logger.detachAppender(logAppender);
     }
 }

@@ -4,7 +4,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.inditex.similarproducts.model.ProductDetail;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
@@ -14,6 +19,7 @@ import io.github.resilience4j.timelimiter.TimeLimiterConfig;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -109,5 +115,40 @@ class ProductDetailAdapterTest {
                 .verify();
 
         wireMockServer.verify(10, getRequestedFor(urlEqualTo("/product/7")));
+    }
+
+    @Test
+    void propagatesErrorWhenCallTimesOut() {
+        wireMockServer.stubFor(get(urlEqualTo("/product/9"))
+                .willReturn(aResponse()
+                        .withFixedDelay(2000)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"id\":\"9\",\"name\":\"Coat\",\"price\":59.99,\"availability\":true}")));
+
+        StepVerifier.create(adapter.findProductDetail("9"))
+                .expectError(TimeoutException.class)
+                .verify();
+    }
+
+    @Test
+    void logsCircuitBreakerStateTransitionWhenItOpens() {
+        ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(ProductDetailAdapter.class);
+        logAppender.start();
+        logger.addAppender(logAppender);
+
+        wireMockServer.stubFor(get(urlEqualTo("/product/10"))
+                .willReturn(aResponse().withStatus(500)));
+
+        for (int i = 0; i < 10; i++) {
+            StepVerifier.create(adapter.findProductDetail("10")).expectError().verify();
+        }
+
+        boolean transitionLogged = logAppender.list.stream()
+                .anyMatch(event -> event.getLevel() == Level.INFO
+                        && event.getFormattedMessage().contains("CLOSED to OPEN"));
+        assertThat(transitionLogged).isTrue();
+
+        logger.detachAppender(logAppender);
     }
 }
