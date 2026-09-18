@@ -39,29 +39,37 @@ class SimilarProductsControllerTest {
     @Test
     void returnsOkWithCompleteResult() {
         ProductDetail detail = new ProductDetail("2", "Dress", BigDecimal.valueOf(19.99), true);
-        when(useCase.getSimilarProducts("1"))
-                .thenReturn(Mono.just(new SimilarProductsResult(List.of(detail), false)));
+        when(useCase.getSimilarProducts("1", 0, 10))
+                .thenReturn(Mono.just(new SimilarProductsResult(List.of(detail), false, 0, 10, 1, 1)));
 
         webTestClient.get().uri("/product/1/similar")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBodyList(ProductDetail.class).contains(detail);
+                .expectBody()
+                .jsonPath("$.items[0].id").isEqualTo("2")
+                .jsonPath("$.page").isEqualTo(0)
+                .jsonPath("$.size").isEqualTo(10)
+                .jsonPath("$.totalItems").isEqualTo(1)
+                .jsonPath("$.totalPages").isEqualTo(1);
     }
 
     @Test
     void returnsPartialContentWhenResultIsPartial() {
-        when(useCase.getSimilarProducts("4"))
-                .thenReturn(Mono.just(new SimilarProductsResult(List.of(), true)));
+        when(useCase.getSimilarProducts("4", 0, 10))
+                .thenReturn(Mono.just(new SimilarProductsResult(List.of(), true, 0, 10, 2, 1)));
 
         webTestClient.get().uri("/product/4/similar")
                 .exchange()
                 .expectStatus().isEqualTo(206)
-                .expectBody().jsonPath("$").isArray();
+                .expectBody()
+                .jsonPath("$.items").isArray()
+                .jsonPath("$.totalItems").isEqualTo(2);
     }
 
     @Test
     void returnsNotFoundWhenBaseProductMissing() {
-        when(useCase.getSimilarProducts("404")).thenReturn(Mono.error(new ProductNotFoundException("404")));
+        when(useCase.getSimilarProducts("404", 0, 10))
+                .thenReturn(Mono.error(new ProductNotFoundException("404")));
 
         webTestClient.get().uri("/product/404/similar")
                 .exchange()
@@ -74,7 +82,7 @@ class SimilarProductsControllerTest {
 
     @Test
     void returnsServerErrorOnUnexpectedFailure() {
-        when(useCase.getSimilarProducts("1")).thenReturn(Mono.error(new RuntimeException("boom")));
+        when(useCase.getSimilarProducts("1", 0, 10)).thenReturn(Mono.error(new RuntimeException("boom")));
 
         webTestClient.get().uri("/product/1/similar")
                 .exchange()
@@ -92,7 +100,7 @@ class SimilarProductsControllerTest {
         logAppender.start();
         logger.addAppender(logAppender);
 
-        when(useCase.getSimilarProducts("1")).thenReturn(Mono.error(new RuntimeException("boom")));
+        when(useCase.getSimilarProducts("1", 0, 10)).thenReturn(Mono.error(new RuntimeException("boom")));
 
         webTestClient.get().uri("/product/1/similar")
                 .exchange()
@@ -122,5 +130,37 @@ class SimilarProductsControllerTest {
 
         assertThat(problemDetail.getStatus()).isEqualTo(400);
         assertThat(problemDetail.getDetail()).isEqualTo("productId: size must be between 0 and 64");
+    }
+
+    @Test
+    void returnsBadRequestWhenPageIsNegative() {
+        webTestClient.get().uri("/product/1/similar?page=-1")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentType("application/problem+json");
+    }
+
+    @Test
+    void returnsBadRequestWhenSizeIsZero() {
+        webTestClient.get().uri("/product/1/similar?size=0")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentType("application/problem+json");
+    }
+
+    @Test
+    void returnsBadRequestWhenSizeExceedsMaximum() {
+        webTestClient.get().uri("/product/1/similar?size=51")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentType("application/problem+json");
+    }
+
+    @Test
+    void returnsBadRequestWhenPageExceedsMaximum() {
+        webTestClient.get().uri("/product/1/similar?page=100001")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentType("application/problem+json");
     }
 }

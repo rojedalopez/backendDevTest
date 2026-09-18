@@ -61,6 +61,15 @@ only — both infrastructure modules depend on `domain/usecase` and
 - Both outbound adapters log Resilience4j circuit-breaker state transitions and TimeLimiter timeouts via SLF4J, so breaker trips and timeouts are now visible in application logs rather than silent.
 - Error responses use RFC 7807 (`application/problem+json`, Spring's built-in `ProblemDetail`) instead of empty bodies: 404 for an unknown base product, 400 for an invalid request (currently: `productId` over 64 characters), 500 for anything unexpected (with a fixed, non-leaking detail message — the real exception is logged server-side only).
 - This adds Micrometer (via Actuator) to the stack, which the original design spec explicitly deferred ("no app-level metrics/observability adapter is planned") — that position changed for this follow-up work; see `docs/superpowers/specs/2026-09-17-similar-products-service-design.md` §10 for the original reasoning this supersedes.
+- `GET /product/{productId}/similar` accepts `page` (default `0`) and `size`
+  (default `10`, max `50`) query parameters and always returns a paginated
+  envelope — `{items, page, size, totalItems, totalPages}` — rather than a
+  bare array. This is a further deliberate deviation from
+  `similarProducts.yaml`'s literal contract (same treatment as the 206
+  decision); see
+  `docs/superpowers/specs/2026-09-18-pagination-design.md` for the
+  rationale, including why the performance benefit comes from slicing the
+  similar-ids list *before* resolving product details, not after.
 
 ## Note on the `docs/` folder
 

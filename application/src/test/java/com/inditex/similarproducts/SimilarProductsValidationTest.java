@@ -28,4 +28,12 @@ class SimilarProductsValidationTest {
                 .jsonPath("$.status").isEqualTo(400)
                 .jsonPath("$.detail").isEqualTo("productId: size must be between 0 and 64");
     }
+
+    @Test
+    void rejectsNegativePage() {
+        webTestClient.get().uri("/product/1/similar?page=-1")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().contentType("application/problem+json");
+    }
 }
