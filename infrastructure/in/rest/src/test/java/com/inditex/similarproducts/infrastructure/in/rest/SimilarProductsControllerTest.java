@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.inditex.similarproducts.model.ProductDetail;
 import com.inditex.similarproducts.model.ProductNotFoundException;
 import com.inditex.similarproducts.usecase.GetSimilarProductsUseCase;
@@ -77,6 +81,27 @@ class SimilarProductsControllerTest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(500)
                 .jsonPath("$.detail").isEqualTo("An unexpected error occurred.");
+    }
+
+    @Test
+    void logsUnexpectedExceptionsServerSide() {
+        ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        logAppender.start();
+        logger.addAppender(logAppender);
+
+        when(useCase.getSimilarProducts("1")).thenReturn(Mono.error(new RuntimeException("boom")));
+
+        webTestClient.get().uri("/product/1/similar")
+                .exchange()
+                .expectStatus().is5xxServerError();
+
+        boolean errorLogged = logAppender.list.stream()
+                .anyMatch(event -> event.getLevel() == Level.ERROR
+                        && event.getFormattedMessage().contains("Unhandled exception"));
+        assertThat(errorLogged).isTrue();
+
+        logger.detachAppender(logAppender);
     }
 
     @Test
