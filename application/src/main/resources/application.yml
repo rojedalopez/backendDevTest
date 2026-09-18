@@ -1,0 +1,33 @@
+server:
+  port: 5000
+
+mocks:
+  base-url: http://localhost:3001
+  max-connections: 500
+  product-detail-cache:
+    ttl: 30s
+    max-size: 10000
+
+resilience4j:
+  timelimiter:
+    instances:
+      similarIdsService:
+        timeout-duration: 2s
+      productDetailService:
+        timeout-duration: 2s
+  circuitbreaker:
+    instances:
+      similarIdsService:
+        sliding-window-size: 20
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        ignore-exceptions:
+          - com.inditex.similarproducts.model.ProductNotFoundException
+      productDetailService:
+        sliding-window-size: 20
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
